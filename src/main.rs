@@ -1,8 +1,10 @@
 mod app;
 mod block_header;
 mod cli;
+mod fixtures;
 mod ipc;
 mod mining_job;
+mod pow;
 
 use anyhow::Result;
 use clap::Parser;
