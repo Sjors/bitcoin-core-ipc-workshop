@@ -93,58 +93,100 @@ jobs:
               submitblock "${block}"
           done
 
-      - name: Check workshop tags
+      - name: Check step.1
         shell: bash
         run: |
           set -euo pipefail
+          git checkout --force step.1
+          echo "step.1 has no Rust project yet; skipping Rust checks"
 
-          mapfile -t tags < <(git tag --list 'step.*' --sort=version:refname)
-          if [[ ${#tags[@]} -eq 0 ]]; then
-            echo "No step.* tags found"
-            exit 1
-          fi
+      - name: Check step.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.2
+          echo "step.2 has no Rust project yet; skipping Rust checks"
 
-          for tag in "${tags[@]}"; do
-            echo "::group::${tag}"
-            git checkout --force "${tag}"
+      - name: Check step.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.3
+          cargo fmt --check
+          cargo check --locked
+          cargo run --locked
 
-            case "${tag}" in
-              step.1|step.2)
-                echo "${tag} has no Rust project yet; skipping Rust checks"
-                ;;
-              step.3|step.4)
-                cargo fmt --check
-                cargo check --locked
-                cargo run --locked
-                ;;
-              step.4.solution|step.5|step.5.solution)
-                cargo fmt --check
-                cargo check --locked
-                cargo run --locked
-                ;;
-              step.6)
-                cargo fmt --check
-                cargo check --locked
-                timeout 180s cargo run --release --locked -- --ci --threads 2
-                ;;
-              step.6.solution|step.7)
-                cargo fmt --check
-                cargo check --locked
-                timeout 180s cargo run --release --locked -- --ci --threads 2
-                ;;
-              step.7.solution)
-                cargo fmt --check
-                cargo check --locked
-                timeout 180s cargo run --release --locked -- --ci --threads 2
-                ;;
-              *)
-                cargo fmt --check
-                cargo check --locked
-                ;;
-            esac
+      - name: Check step.4
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.4
+          cargo fmt --check
+          cargo check --locked
+          cargo run --locked
 
-            echo "::endgroup::"
-          done
+      - name: Check step.4.solution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.4.solution
+          cargo fmt --check
+          cargo check --locked
+          cargo run --locked
+
+      - name: Check step.5
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.5
+          cargo fmt --check
+          cargo check --locked
+          cargo run --locked
+
+      - name: Check step.5.solution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.5.solution
+          cargo fmt --check
+          cargo check --locked
+          cargo run --locked
+
+      - name: Check step.6
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.6
+          cargo fmt --check
+          cargo check --locked
+          timeout 180s cargo run --release --locked -- --ci --threads 2
+
+      - name: Check step.6.solution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.6.solution
+          cargo fmt --check
+          cargo check --locked
+          timeout 180s cargo run --release --locked -- --ci --threads 2
+
+      - name: Check step.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.7
+          cargo fmt --check
+          cargo check --locked
+          timeout 180s cargo run --release --locked -- --ci --threads 2
+
+      - name: Check step.7.solution
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --force step.7.solution
+          cargo fmt --check
+          cargo check --locked
+          timeout 180s cargo run --release --locked -- --ci --threads 2
 
       - name: Stop Bitcoin Core
         if: always()
