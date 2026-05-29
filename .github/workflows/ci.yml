@@ -15,6 +15,9 @@ on:
 jobs:
   workshop-steps:
     runs-on: ubuntu-latest
+    env:
+      BITCOIN_VERSION: "31.0"
+      BITCOIN_PLATFORM: x86_64-linux-gnu
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,6 +30,68 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install capnproto libcapnp-dev
+
+      - name: Cache Bitcoin Core release
+        uses: actions/cache@v4
+        with:
+          path: bitcoin-core
+          key: bitcoin-core-${{ env.BITCOIN_VERSION }}-${{ env.BITCOIN_PLATFORM }}
+
+      - name: Install Bitcoin Core release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! -x bitcoin-core/bin/bitcoin ]]; then
+            archive="bitcoin-${BITCOIN_VERSION}-${BITCOIN_PLATFORM}.tar.gz"
+            curl -fsSLO "https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/${archive}"
+            mkdir -p bitcoin-core
+            tar -xzf "${archive}" -C bitcoin-core --strip-components=1
+          fi
+
+          ./bitcoin-core/bin/bitcoin --version
+
+      - name: Start Bitcoin Core
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ./bitcoin-core/bin/bitcoin node -datadir="${GITHUB_WORKSPACE}/bitcoin" -daemon
+
+          ipc_ready=0
+          for _ in {1..60}; do
+            if [[ -S "${GITHUB_WORKSPACE}/bitcoin/signet/node.sock" ]]; then
+              ipc_ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "${ipc_ready}" -ne 1 ]]; then
+            echo "Bitcoin Core IPC socket was not created"
+            exit 1
+          fi
+
+          rpc_ready=0
+          for _ in {1..60}; do
+            if ./bitcoin-core/bin/bitcoin-cli -datadir="${GITHUB_WORKSPACE}/bitcoin" getblockchaininfo; then
+              rpc_ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "${rpc_ready}" -ne 1 ]]; then
+            echo "Bitcoin Core RPC did not become ready"
+            exit 1
+          fi
+
+          for height in $(seq 1 17); do
+            block="$(tr -d '\n' < "test/fixtures/block_${height}.hex")"
+            ./bitcoin-core/bin/bitcoin-cli \
+              -datadir="${GITHUB_WORKSPACE}/bitcoin" \
+              submitblock "${block}"
+          done
 
       - name: Check workshop tags
         shell: bash
@@ -47,6 +112,31 @@ jobs:
               step.1|step.2)
                 echo "${tag} has no Rust project yet; skipping Rust checks"
                 ;;
+              step.3|step.4)
+                cargo fmt --check
+                cargo check --locked
+                cargo run --locked
+                ;;
+              step.4.solution|step.5|step.5.solution)
+                cargo fmt --check
+                cargo check --locked
+                cargo run --locked
+                ;;
+              step.6)
+                cargo fmt --check
+                cargo check --locked
+                timeout 180s cargo run --release --locked -- --ci --threads 2
+                ;;
+              step.6.solution|step.7)
+                cargo fmt --check
+                cargo check --locked
+                timeout 180s cargo run --release --locked -- --ci --threads 2
+                ;;
+              step.7.solution)
+                cargo fmt --check
+                cargo check --locked
+                timeout 180s cargo run --release --locked -- --ci --threads 2
+                ;;
               *)
                 cargo fmt --check
                 cargo check --locked
@@ -55,3 +145,7 @@ jobs:
 
             echo "::endgroup::"
           done
+
+      - name: Stop Bitcoin Core
+        if: always()
+        run: ./bitcoin-core/bin/bitcoin-cli -datadir="${GITHUB_WORKSPACE}/bitcoin" stop || true
