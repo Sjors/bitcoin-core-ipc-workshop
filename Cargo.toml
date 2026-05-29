@@ -9,6 +9,7 @@ bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", package = "bit
 bitcoin-capnp-types = { git = "https://github.com/2140-dev/bitcoin-capnp-types", branch = "31.x" }
 capnp-rpc = "0.25.0"
 clap = { version = "4.5", features = ["derive"] }
+encoding = { git = "https://github.com/rust-bitcoin/rust-bitcoin", package = "bitcoin-consensus-encoding", tag = "bitcoin-0.33.0-beta" }
 futures = "0.3"
 tokio = { version = "1", features = ["io-util", "net", "rt"] }
 tokio-util = { version = "0.7", features = ["compat"] }

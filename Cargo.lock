@@ -130,6 +130,7 @@ dependencies = [
  "anyhow",
  "bitcoin",
  "bitcoin-capnp-types",
+ "bitcoin-consensus-encoding",
  "capnp-rpc",
  "clap",
  "futures",

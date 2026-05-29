@@ -1,10 +1,12 @@
+#![allow(dead_code)]
+
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
-use bitcoin::BlockHash;
+use bitcoin::{BlockHash, TxMerkleNode, TxOut};
 use bitcoin_capnp_types::{
     init_capnp::init,
-    mining_capnp::mining,
+    mining_capnp::{block_template, mining},
     proxy_capnp::{thread as ipc_thread, thread_map},
 };
 use capnp_rpc::{RpcSystem, rpc_twoparty_capnp::Side, twoparty::VatNetwork};
@@ -12,11 +14,19 @@ use futures::io::BufReader;
 use tokio::net::{UnixStream, unix::OwnedReadHalf};
 use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
-use crate::mining_job::Tip;
+use crate::{
+    block_header::BLOCK_HEADER_LEN,
+    mining_job::{CoinbaseTemplate, MerklePath, Tip},
+};
 
 pub struct IpcMiningClient {
     thread: ipc_thread::Client,
     mining: mining::Client,
+}
+
+pub struct IpcBlockTemplate {
+    thread: ipc_thread::Client,
+    template: block_template::Client,
 }
 
 impl IpcMiningClient {
@@ -87,6 +97,107 @@ impl IpcMiningClient {
             hash: BlockHash::from_byte_array(hash),
         })
     }
+
+    pub async fn create_block_template(&self) -> Result<IpcBlockTemplate> {
+        let mut request = self.mining.create_new_block_request();
+        request.get().get_context()?.set_thread(self.thread.clone());
+        request.get().set_cooldown(false);
+        request.get().init_options().set_use_mempool(false);
+
+        let response = request
+            .send()
+            .promise
+            .await
+            .context("createNewBlock IPC request failed")?;
+        let template = response
+            .get()?
+            .get_result()
+            .context("missing block template")?;
+
+        Ok(IpcBlockTemplate {
+            thread: self.thread.clone(),
+            template,
+        })
+    }
+}
+
+impl IpcBlockTemplate {
+    pub async fn block_header(&self) -> Result<[u8; 80]> {
+        let mut request = self.template.get_block_header_request();
+        request.get().get_context()?.set_thread(self.thread.clone());
+        let response = request
+            .send()
+            .promise
+            .await
+            .context("getBlockHeader IPC request failed")?;
+        let bytes = response.get()?.get_result()?.to_vec();
+        bytes.try_into().map_err(|bytes: Vec<u8>| {
+            anyhow::anyhow!(
+                "expected {BLOCK_HEADER_LEN}-byte block header, got {}",
+                bytes.len()
+            )
+        })
+    }
+
+    pub async fn coinbase_template(&self) -> Result<CoinbaseTemplate> {
+        let mut request = self.template.get_coinbase_tx_request();
+        request.get().get_context()?.set_thread(self.thread.clone());
+        let response = request
+            .send()
+            .promise
+            .await
+            .context("getCoinbaseTx IPC request failed")?;
+        let coinbase = response.get()?.get_result()?;
+
+        let mut required_outputs = Vec::new();
+        let outputs = coinbase.get_required_outputs()?;
+        for i in 0..outputs.len() {
+            required_outputs.push(encoding::decode_from_slice::<TxOut>(outputs.get(i)?)?);
+        }
+
+        let witness = coinbase.get_witness()?.to_vec();
+        Ok(CoinbaseTemplate {
+            script_sig_prefix: coinbase.get_script_sig_prefix()?.to_vec(),
+            witness: (!witness.is_empty()).then_some(witness),
+            block_reward_remaining: coinbase
+                .get_block_reward_remaining()
+                .try_into()
+                .context("negative block reward remaining")?,
+            required_outputs,
+        })
+    }
+
+    pub async fn coinbase_merkle_path(&self) -> Result<MerklePath> {
+        let mut request = self.template.get_coinbase_merkle_path_request();
+        request.get().get_context()?.set_thread(self.thread.clone());
+        let response = request
+            .send()
+            .promise
+            .await
+            .context("getCoinbaseMerklePath IPC request failed")?;
+        let path = response.get()?.get_result()?;
+
+        let mut hashes = Vec::new();
+        for i in 0..path.len() {
+            let bytes = path.get(i)?.to_vec();
+            let bytes = bytes.try_into().map_err(|bytes: Vec<u8>| {
+                anyhow::anyhow!("expected 32-byte merkle path hash, got {}", bytes.len())
+            })?;
+            hashes.push(TxMerkleNode::from_byte_array(bytes));
+        }
+        Ok(hashes)
+    }
+
+    pub async fn destroy(&self) -> Result<()> {
+        let mut request = self.template.destroy_request();
+        request.get().get_context()?.set_thread(self.thread.clone());
+        request
+            .send()
+            .promise
+            .await
+            .context("destroy BlockTemplate IPC request failed")?;
+        Ok(())
+    }
 }
 
 async fn connect_unix_stream(
@@ -104,4 +215,10 @@ async fn connect_unix_stream(
         Side::Client,
         Default::default(),
     ))
+}
+
+pub(crate) fn bootstrap_hint(tip_height: i32) -> String {
+    format!(
+        "createNewBlock failed at chain height {tip_height}; if this is Bitcoin Core v31.0, bootstrap this custom signet past height 16 first, for example: bitcoin-cli -datadir=$(pwd)/bitcoin generatetodescriptor 17 \"raw(51)\" 100000000"
+    )
 }

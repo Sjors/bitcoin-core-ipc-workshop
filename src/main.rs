@@ -1,4 +1,5 @@
 mod app;
+mod block_header;
 mod cli;
 mod ipc;
 mod mining_job;
