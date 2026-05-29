@@ -8,6 +8,8 @@ and submits the solution.
 The proof-of-work difficulty is low enough that mining on a laptop should not be a
 problem.
 
+This workshop was generated with the help of this [skill](https://github.com/Sjors/skills/tree/master/tagged-workshop) and this [script](https://github.com/Sjors/dev-utils/blob/master/tagged_workshop_retag.py).
+
 ## Step 1 - Bitcoin Core
 
 Download Bitcoin Core v31.0 from:
