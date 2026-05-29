@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use anyhow::{Context, Result, bail};
 use bitcoin::{
     Amount, BlockHash, OutPoint, ScriptPubKeyBuf, ScriptSigBuf, Sequence, Transaction,

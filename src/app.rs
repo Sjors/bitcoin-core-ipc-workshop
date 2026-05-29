@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-
 use anyhow::{Context, Result};
 
 use crate::{
@@ -59,8 +57,8 @@ pub async fn run(config: Config) -> Result<()> {
                     "found header: version={:#x} timestamp={} nonce={}",
                     found.version, found.timestamp, found.nonce
                 );
-                // TODO: Submit the solved header fields and coinbase transaction with
-                // template.submit_solution().
+                template.submit_solution(&found, &work.coinbase).await?;
+                println!("submitted block at height {}", tip.height + 1);
                 template.destroy().await?;
                 return Ok(());
             }

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 pub const BLOCK_HEADER_LEN: usize = 80;
 pub const VERSION_OFFSET: usize = 0;
 pub const MERKLE_ROOT_OFFSET: usize = 36;
