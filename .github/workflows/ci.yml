@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - workshop
+    tags:
+      - "step.*"
+  pull_request:
+    branches:
+      - master
+      - workshop
+
+jobs:
+  workshop-steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install Cap'n Proto
+        run: |
+          sudo apt-get update
+          sudo apt-get install capnproto libcapnp-dev
+
+      - name: Check workshop tags
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t tags < <(git tag --list 'step.*' --sort=version:refname)
+          if [[ ${#tags[@]} -eq 0 ]]; then
+            echo "No step.* tags found"
+            exit 1
+          fi
+
+          for tag in "${tags[@]}"; do
+            echo "::group::${tag}"
+            git checkout --force "${tag}"
+
+            case "${tag}" in
+              step.1|step.2)
+                echo "${tag} has no Rust project yet; skipping Rust checks"
+                ;;
+              *)
+                cargo fmt --check
+                cargo check --locked
+                ;;
+            esac
+
+            echo "::endgroup::"
+          done
