@@ -1,0 +1,5 @@
+target/
+bitcoin-core
+bitcoin/signet/
+bitcoin/settings.json
+*.tar.gz
