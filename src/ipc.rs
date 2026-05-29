@@ -16,7 +16,8 @@ use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatE
 
 use crate::{
     block_header::BLOCK_HEADER_LEN,
-    mining_job::{CoinbaseTemplate, MerklePath, Tip},
+    mining_job::{CoinbaseTemplate, Tip},
+    pow::FoundBlock,
 };
 
 pub struct IpcMiningClient {
@@ -157,6 +158,8 @@ impl IpcBlockTemplate {
 
         let witness = coinbase.get_witness()?.to_vec();
         Ok(CoinbaseTemplate {
+            version: coinbase.get_version(),
+            sequence: coinbase.get_sequence(),
             script_sig_prefix: coinbase.get_script_sig_prefix()?.to_vec(),
             witness: (!witness.is_empty()).then_some(witness),
             block_reward_remaining: coinbase
@@ -164,10 +167,11 @@ impl IpcBlockTemplate {
                 .try_into()
                 .context("negative block reward remaining")?,
             required_outputs,
+            lock_time: coinbase.get_lock_time(),
         })
     }
 
-    pub async fn coinbase_merkle_path(&self) -> Result<MerklePath> {
+    pub async fn coinbase_merkle_path(&self) -> Result<Vec<TxMerkleNode>> {
         let mut request = self.template.get_coinbase_merkle_path_request();
         request.get().get_context()?.set_thread(self.thread.clone());
         let response = request
@@ -196,6 +200,25 @@ impl IpcBlockTemplate {
             .promise
             .await
             .context("destroy BlockTemplate IPC request failed")?;
+        Ok(())
+    }
+
+    pub async fn submit_solution(&self, found: &FoundBlock, coinbase: &[u8]) -> Result<()> {
+        let mut request = self.template.submit_solution_request();
+        request.get().get_context()?.set_thread(self.thread.clone());
+        request.get().set_version(found.version);
+        request.get().set_timestamp(found.timestamp);
+        request.get().set_nonce(found.nonce);
+        request.get().set_coinbase(coinbase);
+
+        let response = request
+            .send()
+            .promise
+            .await
+            .context("submitSolution IPC request failed")?;
+        if !response.get()?.get_result() {
+            bail!("node rejected submitted block solution");
+        }
         Ok(())
     }
 }
