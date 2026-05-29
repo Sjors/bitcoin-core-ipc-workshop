@@ -107,6 +107,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitcoin-capnp-types"
+version = "0.2.0"
+source = "git+https://github.com/2140-dev/bitcoin-capnp-types?branch=31.x#f6381619b82df632841be36f10b1c93f50191b30"
+dependencies = [
+ "capnp",
+ "capnpc",
+]
+
+[[package]]
 name = "bitcoin-consensus-encoding"
 version = "0.1.0"
 source = "git+https://github.com/rust-bitcoin/rust-bitcoin?tag=bitcoin-0.33.0-beta#482a0f6ab3db3dbd7c9cb8595b99af24b1792c10"
@@ -120,6 +129,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bitcoin",
+ "bitcoin-capnp-types",
  "capnp-rpc",
  "clap",
  "futures",
@@ -231,6 +241,15 @@ dependencies = [
  "capnp",
  "capnp-futures",
  "futures",
+]
+
+[[package]]
+name = "capnpc"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fca02be865c8c5a78bfc24b9819006ab6b59bef238467203928e26459557af93"
+dependencies = [
+ "capnp",
 ]
 
 [[package]]
