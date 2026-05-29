@@ -8,6 +8,12 @@ and submits the solution.
 The proof-of-work difficulty is low enough that mining on a laptop should not be a
 problem.
 
+The Rust application uses the
+[`2140-dev/bitcoin-capnp-types`](https://github.com/2140-dev/bitcoin-capnp-types)
+crate for Bitcoin Core IPC bindings and the
+[`rust-bitcoin`](https://github.com/rust-bitcoin/rust-bitcoin) crates for Bitcoin
+data structures, consensus encoding, and hashing.
+
 This workshop was generated with the help of this [skill](https://github.com/Sjors/skills/tree/master/tagged-workshop) and this [script](https://github.com/Sjors/dev-utils/blob/master/tagged_workshop_retag.py).
 
 ## Step 1 - Bitcoin Core
