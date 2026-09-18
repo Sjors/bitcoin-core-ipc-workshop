@@ -103,6 +103,191 @@ The workshop does not work with v31 or older. If you use the Bitcoin Core
 `master` branch, then later on you'll need to use the `master` branch instead of
 `32.x` for `bitcoin-capnp-types`.
 
-## Step 2 ...
+## Step 2 - Your very own signet
 
-Use `git checkout step.2` to move to [step 2](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.2).
+Start a fresh custom signet node. Use `bitcoin/` in this repository
+as the data directory.
+
+```sh
+bitcoin-core/bin/bitcoin node \
+  -datadir="$(pwd)/bitcoin"
+```
+
+The configuration is in `bitcoin/bitcoin.conf`. The `ipcbind=unix` setting makes
+the node listen for IPC connections on the Unix socket
+`bitcoin/signet/node.sock`.
+
+The signet challenge `51` is `OP_1`, so any block only needs to satisfy proof of
+work; see [BIP325](https://github.com/bitcoin/bips/blob/master/bip-0325.mediawiki).
+
+Leave the node running for the rest of the workshop.
+
+## Step 3 - Hello World in Rust
+
+We'll leave Bitcoin Core running, so open another terminal tab for our Rust
+application.
+
+If you do not have Rust installed yet, follow the official installation
+instructions at https://www.rust-lang.org/tools/install.
+
+The `step.3` tag you just checked out added a minimal Rust application for you:
+`Cargo.toml` and `src/main.rs`. There is nothing to write yet.
+
+Check that the application runs:
+
+```sh
+cargo run
+```
+
+## Step 4 - IPC connection
+
+This is the first exercise: connect to Bitcoin Core over IPC and print the
+current chain tip.
+
+Bitcoin Core's IPC interface uses [Cap'n Proto](https://capnproto.org/). The
+[`2140-dev/bitcoin-capnp-types`](https://github.com/2140-dev/bitcoin-capnp-types)
+crate generates Rust bindings from the Bitcoin Core v32 schemas, and is already in
+`Cargo.toml` (using its `32.x` branch). Building it requires the `capnp`
+compiler:
+
+```sh
+# macOS
+brew install capnp
+# Debian / Ubuntu
+sudo apt-get install capnproto libcapnp-dev
+```
+
+The interfaces used in this step are defined in `capnp/init.capnp`,
+`capnp/proxy.capnp` and `capnp/mining.capnp` in that crate. Every method `foo` in
+a schema becomes a `foo_request()` method on the Rust client, which you use like
+this:
+
+```rust
+let mut request = client.some_method_request();
+request.get().set_some_param(42);
+let response = request.send().promise.await?;
+let result = response.get()?.get_result()?;
+```
+
+The starter code already opens the Unix socket and gives you the `Init` client.
+From there:
+
+1. Call `Init.construct`. The result contains a `ThreadMap`.
+2. Call `ThreadMap.makePool` to have Bitcoin Core start a few worker threads for
+   your connection. Bitcoin Core executes every IPC call on one of them.
+3. Call `Init.makeMining` to get the `Mining` client.
+4. Call `Mining.getTip` and return its height and hash.
+
+Most methods take a `context :Proxy.Context` parameter, which can be used to pick
+a specific worker thread. Thanks to `makePool` you can simply leave it unset.
+
+The TODOs for this step are in:
+
+- `src/ipc.rs`
+
+Run the application with:
+
+```sh
+cargo run
+```
+
+The starter code prints a placeholder tip. When you're done it should match:
+
+```sh
+bitcoin-core/bin/bitcoin-cli -datadir="$(pwd)/bitcoin" getbestblockhash
+```
+
+By default the application connects to `./bitcoin/signet/node.sock`. Use
+`--socket` if your node uses a different data directory.
+
+## Step 5 - Block template
+
+Next, ask Bitcoin Core for a block template and inspect what the IPC interface
+gives you.
+
+`Mining.createNewBlock` returns a `BlockTemplate`. This is another IPC interface
+(see `capnp/mining.capnp`), which represents a template that lives inside the
+node. Implement three methods:
+
+- `createNewBlock`: set `cooldown` to `false` so the node does not wait before
+  creating the template. We don't need mempool transactions either, so set
+  `useMempool` to `false` in the options.
+- `BlockTemplate.getBlockHeader`: returns the 80 byte serialized block header.
+- `BlockTemplate.destroy`: tells the node it can free the template.
+
+The wrappers for `getCoinbaseTx` and `getCoinbaseMerklePath` are provided,
+because they are mostly about converting data. You'll need their results in
+step 7.
+
+Then use your new methods in `src/app.rs` instead of the placeholders.
+
+The TODOs for this step are in:
+
+- `src/ipc.rs`
+- `src/app.rs`
+
+When you're done `cargo run` should print the real `nBits` of your signet
+(`1e0377ae`) instead of `00000000`.
+
+## Step 6 - Header mining
+
+This step adds the local proof-of-work code for you (`src/pow.rs`), so the
+exercise can stay focused on IPC.
+
+Run the miner:
+
+```sh
+cargo run --release -- --threads 4
+```
+
+The starter code mines a fake all-zero header against an easy fake target.
+Replace those with the IPC block header and its target, so the miner searches
+for a valid nonce for the real template. This should take less than a minute on a
+laptop.
+
+The TODOs for this step are in:
+
+- `src/app.rs`
+
+## Step 7 - Submit the block
+
+Mining the IPC header proves the proof-of-work loop works, but Bitcoin Core still
+needs the matching coinbase transaction before it can accept the block.
+
+This step provides the coinbase and merkle-root plumbing (`src/mining_job.rs`):
+it builds a coinbase transaction from the `getCoinbaseTx` result, and uses
+`getCoinbaseMerklePath` to put the right merkle root in the header.
+
+Finish the miner by implementing `BlockTemplate.submitSolution`. It takes the
+`version`, `timestamp` and `nonce` of the solved header, plus the serialized
+coinbase transaction. If `result` is `false`, then `reason` and `debug` explain
+why the node rejected the block.
+
+The TODOs for this step are in:
+
+- `src/ipc.rs`
+- `src/app.rs`
+
+Run the miner:
+
+```sh
+cargo run --release -- --threads 4
+```
+
+Check that the chain grew:
+
+```sh
+bitcoin-core/bin/bitcoin-cli -datadir="$(pwd)/bitcoin" getblockcount
+```
+
+## Done
+
+You are looking at the reference solution for step 7, the end of the workshop.
+Every run of the miner now adds a block to your signet.
+
+Some ideas to explore next, all in `capnp/mining.capnp`:
+
+- Include mempool transactions (`useMempool`) and look at `getTxFees`.
+- Use `BlockTemplate.waitNext` to get a new template when the tip changes or fees
+  rise, instead of mining a stale one.
+- Use `Mining.waitTipChanged` to mine continuously.
