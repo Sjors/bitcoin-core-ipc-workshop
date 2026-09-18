@@ -139,6 +139,66 @@ Check that the application runs:
 cargo run
 ```
 
-## Step 4 ...
+## Step 4 - IPC connection
 
-Use `git checkout step.4` to move to [step 4](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.4).
+This is the first exercise: connect to Bitcoin Core over IPC and print the
+current chain tip.
+
+Bitcoin Core's IPC interface uses [Cap'n Proto](https://capnproto.org/). The
+[`2140-dev/bitcoin-capnp-types`](https://github.com/2140-dev/bitcoin-capnp-types)
+crate generates Rust bindings from the Bitcoin Core v32 schemas, and is already in
+`Cargo.toml` (using its `32.x` branch). Building it requires the `capnp`
+compiler:
+
+```sh
+# macOS
+brew install capnp
+# Debian / Ubuntu
+sudo apt-get install capnproto libcapnp-dev
+```
+
+The interfaces used in this step are defined in `capnp/init.capnp`,
+`capnp/proxy.capnp` and `capnp/mining.capnp` in that crate. Every method `foo` in
+a schema becomes a `foo_request()` method on the Rust client, which you use like
+this:
+
+```rust
+let mut request = client.some_method_request();
+request.get().set_some_param(42);
+let response = request.send().promise.await?;
+let result = response.get()?.get_result()?;
+```
+
+The starter code already opens the Unix socket and gives you the `Init` client.
+From there:
+
+1. Call `Init.construct`. The result contains a `ThreadMap`.
+2. Call `ThreadMap.makePool` to have Bitcoin Core start a few worker threads for
+   your connection. Bitcoin Core executes every IPC call on one of them.
+3. Call `Init.makeMining` to get the `Mining` client.
+4. Call `Mining.getTip` and return its height and hash.
+
+Most methods take a `context :Proxy.Context` parameter, which can be used to pick
+a specific worker thread. Thanks to `makePool` you can simply leave it unset.
+
+The TODOs for this step are in:
+
+- `src/ipc.rs`
+
+Run the application with:
+
+```sh
+cargo run
+```
+
+The starter code prints a placeholder tip. When you're done it should match:
+
+```sh
+bitcoin-core/bin/bitcoin-cli -datadir="$(pwd)/bitcoin" getbestblockhash
+```
+
+By default the application connects to `./bitcoin/signet/node.sock`. Use
+`--socket` if your node uses a different data directory.
+
+When you're done, or stuck, use `git checkout step.4.solution` to see the
+[Step 4 solution](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.4.solution).
