@@ -200,5 +200,9 @@ bitcoin-core/bin/bitcoin-cli -datadir="$(pwd)/bitcoin" getbestblockhash
 By default the application connects to `./bitcoin/signet/node.sock`. Use
 `--socket` if your node uses a different data directory.
 
-When you're done, or stuck, use `git checkout step.4.solution` to see the
-[Step 4 solution](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.4.solution).
+You are looking at the reference solution for step 4. Use
+`git diff step.4 step.4.solution` to see what it changed.
+
+## Step 5 ...
+
+Use `git checkout step.5` to move to [step 5](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.5).

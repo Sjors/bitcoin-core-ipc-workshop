@@ -1,7 +1,3 @@
-// TODO: Remove this line when you're done; it silences warnings about the imports
-// and variables that your code will use.
-#![allow(dead_code, unused_imports, unused_variables)]
-
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -18,7 +14,7 @@ use crate::mining_job::Tip;
 const IPC_THREAD_POOL_SIZE: u32 = 2;
 
 pub struct IpcMiningClient {
-    // TODO: Store the mining client (mining::Client) here.
+    mining: mining::Client,
 }
 
 impl IpcMiningClient {
@@ -28,26 +24,61 @@ impl IpcMiningClient {
         let init: init::Client = rpc_system.bootstrap(Side::Server);
         tokio::task::spawn_local(rpc_system);
 
-        // TODO: Call construct on the init client and get the thread map
-        // (thread_map::Client) from the result.
+        let construct_response = init
+            .construct_request()
+            .send()
+            .promise
+            .await
+            .context("construct IPC request failed")?;
+        let thread_map: thread_map::Client = construct_response
+            .get()?
+            .get_thread_map()
+            .context("missing IPC thread map")?;
 
-        // TODO: Call makePool on the thread map, with IPC_THREAD_POOL_SIZE as the
-        // count. Requests that do not name a thread in their context are dispatched
-        // to this pool.
+        // Ask Bitcoin Core for a pool of worker threads. Requests that do not name
+        // a thread in their context are dispatched to this pool.
+        let mut pool_request = thread_map.make_pool_request();
+        pool_request.get().set_count(IPC_THREAD_POOL_SIZE);
+        pool_request
+            .send()
+            .promise
+            .await
+            .context("makePool IPC request failed")?;
 
-        // TODO: Call makeMining on the init client, and store the mining client
-        // from the result in Self.
+        let mining_response = init
+            .make_mining_request()
+            .send()
+            .promise
+            .await
+            .context("makeMining IPC request failed")?;
+        let mining = mining_response
+            .get()?
+            .get_result()
+            .context("missing mining client")?;
 
-        Ok(Self {})
+        Ok(Self { mining })
     }
 
     pub async fn tip(&self) -> Result<Tip> {
-        // TODO: Call getTip on the mining client. Bail if hasResult is false,
-        // otherwise return the real height and hash instead of this placeholder.
-        // The hash is a 32 byte Data field.
+        let response = self
+            .mining
+            .get_tip_request()
+            .send()
+            .promise
+            .await
+            .context("getTip IPC request failed")?;
+        let results = response.get()?;
+        if !results.get_has_result() {
+            bail!("Bitcoin Core did not return a chain tip");
+        }
+        let tip = results.get_result()?;
+        let hash = tip.get_hash()?.to_vec();
+        let hash = hash.try_into().map_err(|hash: Vec<u8>| {
+            anyhow::anyhow!("expected 32-byte chain tip hash, got {}", hash.len())
+        })?;
         Ok(Tip {
-            height: 0,
-            hash: BlockHash::from_byte_array([0u8; 32]),
+            height: tip.get_height(),
+            hash: BlockHash::from_byte_array(hash),
         })
     }
 }
