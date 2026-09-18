@@ -1,6 +1,3 @@
-// TODO: Remove this line when you're done; not everything here is used until then.
-#![allow(dead_code)]
-
 use std::{
     sync::{
         Arc,

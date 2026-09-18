@@ -1,8 +1,4 @@
-// TODO: Remove this line when you're done.
-#![allow(unused_imports)]
-
 use anyhow::Result;
-use bitcoin::Target;
 
 use crate::{
     block_header::{BITS_OFFSET, UINT32_LEN},
@@ -33,18 +29,18 @@ pub async fn run(config: Config) -> Result<()> {
         coinbase_template.block_reward_remaining
     );
 
-    // TODO: Build MiningWork from the IPC block header instead of this fake header.
-    let work = MiningWork { header: [0u8; 80] };
-
-    // TODO: Convert the IPC block header's nBits value into a mining target with
-    // target_from_bits().
-    let _bits = bits;
-    let target = Target::MAX_ATTAINABLE_REGTEST;
+    let work = MiningWork { header };
+    let target = target_from_bits(bits);
     println!("target: {target:064x}");
 
-    // TODO: If a header was found, print its version, timestamp and nonce.
-    let _found = ci_solution(&config.fixtures, config.ci, tip.height + 1, &target)?
+    let found = ci_solution(&config.fixtures, config.ci, tip.height + 1, &target)?
         .or_else(|| mine_round(&work, &target, config.threads, 0));
+    if let Some(found) = found {
+        println!(
+            "found header: version={:#x} timestamp={} nonce={}",
+            found.version, found.timestamp, found.nonce
+        );
+    }
 
     template.destroy().await?;
     Ok(())

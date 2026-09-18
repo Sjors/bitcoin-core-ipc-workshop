@@ -249,5 +249,9 @@ The TODOs for this step are in:
 
 - `src/app.rs`
 
-When you're done, or stuck, use `git checkout step.6.solution` to see the
-[Step 6 solution](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.6.solution).
+You are looking at the reference solution for step 6. Use
+`git diff step.6 step.6.solution` to see what it changed.
+
+## Step 7 ...
+
+Use `git checkout step.7` to move to [step 7](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.7).
