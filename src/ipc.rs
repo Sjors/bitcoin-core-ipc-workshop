@@ -1,6 +1,3 @@
-// TODO: Remove this line when you're done.
-#![allow(dead_code, unused_variables)]
-
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -197,11 +194,26 @@ impl IpcBlockTemplate {
     }
 
     pub async fn submit_solution(&self, found: &FoundBlock, coinbase: &[u8]) -> Result<()> {
-        // TODO: Call submitSolution on the block template client with the version,
-        // timestamp and nonce of the found header, and the serialized coinbase
-        // transaction. If the result is false, bail with the reason and debug
-        // strings from the response.
-        todo!("submitSolution")
+        let mut request = self.template.submit_solution_request();
+        request.get().set_version(found.version);
+        request.get().set_timestamp(found.timestamp);
+        request.get().set_nonce(found.nonce);
+        request.get().set_coinbase(coinbase);
+
+        let response = request
+            .send()
+            .promise
+            .await
+            .context("submitSolution IPC request failed")?;
+        let results = response.get()?;
+        if !results.get_result() {
+            bail!(
+                "node rejected submitted block solution: {} ({})",
+                results.get_reason()?.to_str()?,
+                results.get_debug()?.to_str()?
+            );
+        }
+        Ok(())
     }
 }
 

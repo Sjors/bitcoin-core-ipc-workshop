@@ -54,8 +54,8 @@ pub async fn run(config: Config) -> Result<()> {
                     "found header: version={:#x} timestamp={} nonce={}",
                     found.version, found.timestamp, found.nonce
                 );
-                // TODO: Submit the found header and work.coinbase with
-                // template.submit_solution(), and print the height of the new block.
+                template.submit_solution(&found, &work.coinbase).await?;
+                println!("submitted block at height {}", tip.height + 1);
                 template.destroy().await?;
                 return Ok(());
             }

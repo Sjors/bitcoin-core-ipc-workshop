@@ -280,5 +280,14 @@ Check that the chain grew:
 bitcoin-core/bin/bitcoin-cli -datadir="$(pwd)/bitcoin" getblockcount
 ```
 
-When you're done, or stuck, use `git checkout step.7.solution` to see the
-[Step 7 solution](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.7.solution).
+## Done
+
+You are looking at the reference solution for step 7, the end of the workshop.
+Every run of the miner now adds a block to your signet.
+
+Some ideas to explore next, all in `capnp/mining.capnp`:
+
+- Include mempool transactions (`useMempool`) and look at `getTxFees`.
+- Use `BlockTemplate.waitNext` to get a new template when the tip changes or fees
+  rise, instead of mining a stale one.
+- Use `Mining.waitTipChanged` to mine continuously.

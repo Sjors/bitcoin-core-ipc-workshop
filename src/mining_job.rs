@@ -22,8 +22,6 @@ pub struct CoinbaseTemplate {
     pub lock_time: u32,
 }
 
-// TODO: Remove this line when you're done.
-#[allow(dead_code)]
 pub struct MiningWork {
     pub header: [u8; 80],
     pub coinbase: Vec<u8>,
