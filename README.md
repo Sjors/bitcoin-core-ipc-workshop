@@ -122,6 +122,23 @@ work; see [BIP325](https://github.com/bitcoin/bips/blob/master/bip-0325.mediawik
 
 Leave the node running for the rest of the workshop.
 
-## Step 3 ...
+## Step 3 - Hello World in Rust
 
-Use `git checkout step.3` to move to [step 3](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.3).
+We'll leave Bitcoin Core running, so open another terminal tab for our Rust
+application.
+
+If you do not have Rust installed yet, follow the official installation
+instructions at https://www.rust-lang.org/tools/install.
+
+The `step.3` tag you just checked out added a minimal Rust application for you:
+`Cargo.toml` and `src/main.rs`. There is nothing to write yet.
+
+Check that the application runs:
+
+```sh
+cargo run
+```
+
+## Step 4 ...
+
+Use `git checkout step.4` to move to [step 4](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.4).
