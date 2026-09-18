@@ -229,5 +229,9 @@ The TODOs for this step are in:
 When you're done `cargo run` should print the real `nBits` of your signet
 (`1e0377ae`) instead of `00000000`.
 
-When you're done, or stuck, use `git checkout step.5.solution` to see the
-[Step 5 solution](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.5.solution).
+You are looking at the reference solution for step 5. Use
+`git diff step.5 step.5.solution` to see what it changed.
+
+## Step 6 ...
+
+Use `git checkout step.6` to move to [step 6](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.6).

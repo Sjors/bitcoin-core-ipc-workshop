@@ -1,7 +1,3 @@
-// TODO: Remove this line when you're done; it silences warnings about code that
-// is not used yet.
-#![allow(dead_code, unused_imports)]
-
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -98,18 +94,40 @@ impl IpcMiningClient {
     }
 
     pub async fn create_block_template(&self) -> Result<IpcBlockTemplate> {
-        // TODO: Call createNewBlock on the mining client. Set cooldown to false and,
-        // in the options, useMempool to false. Wrap the BlockTemplate client from
-        // the result in IpcBlockTemplate.
-        todo!("createNewBlock")
+        let mut request = self.mining.create_new_block_request();
+        request.get().set_cooldown(false);
+        request.get().init_options().set_use_mempool(false);
+
+        let response = request
+            .send()
+            .promise
+            .await
+            .context("createNewBlock IPC request failed")?;
+        let template = response
+            .get()?
+            .get_result()
+            .context("missing block template")?;
+
+        Ok(IpcBlockTemplate { template })
     }
 }
 
 impl IpcBlockTemplate {
     pub async fn block_header(&self) -> Result<[u8; 80]> {
-        // TODO: Call getBlockHeader on the block template client and return the
-        // result as a BLOCK_HEADER_LEN byte array.
-        todo!("getBlockHeader")
+        let response = self
+            .template
+            .get_block_header_request()
+            .send()
+            .promise
+            .await
+            .context("getBlockHeader IPC request failed")?;
+        let bytes = response.get()?.get_result()?.to_vec();
+        bytes.try_into().map_err(|bytes: Vec<u8>| {
+            anyhow::anyhow!(
+                "expected {BLOCK_HEADER_LEN}-byte block header, got {}",
+                bytes.len()
+            )
+        })
     }
 
     pub async fn coinbase_template(&self) -> Result<CoinbaseTemplate> {
@@ -162,8 +180,13 @@ impl IpcBlockTemplate {
     }
 
     pub async fn destroy(&self) -> Result<()> {
-        // TODO: Call destroy on the block template client.
-        todo!("destroy")
+        self.template
+            .destroy_request()
+            .send()
+            .promise
+            .await
+            .context("destroy BlockTemplate IPC request failed")?;
+        Ok(())
     }
 }
 
