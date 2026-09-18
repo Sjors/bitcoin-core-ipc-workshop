@@ -229,9 +229,25 @@ The TODOs for this step are in:
 When you're done `cargo run` should print the real `nBits` of your signet
 (`1e0377ae`) instead of `00000000`.
 
-You are looking at the reference solution for step 5. Use
-`git diff step.5 step.5.solution` to see what it changed.
+## Step 6 - Header mining
 
-## Step 6 ...
+This step adds the local proof-of-work code for you (`src/pow.rs`), so the
+exercise can stay focused on IPC.
 
-Use `git checkout step.6` to move to [step 6](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.6).
+Run the miner:
+
+```sh
+cargo run --release -- --threads 4
+```
+
+The starter code mines a fake all-zero header against an easy fake target.
+Replace those with the IPC block header and its target, so the miner searches
+for a valid nonce for the real template. This should take less than a minute on a
+laptop.
+
+The TODOs for this step are in:
+
+- `src/app.rs`
+
+When you're done, or stuck, use `git checkout step.6.solution` to see the
+[Step 6 solution](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.6.solution).

@@ -14,4 +14,8 @@ pub struct CoinbaseTemplate {
     pub required_outputs: Vec<TxOut>,
 }
 
+pub struct MiningWork {
+    pub header: [u8; 80],
+}
+
 pub type MerklePath = Vec<TxMerkleNode>;
