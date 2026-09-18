@@ -1,6 +1,17 @@
-use bitcoin::BlockHash;
+use bitcoin::{BlockHash, TxMerkleNode, TxOut};
 
 pub struct Tip {
     pub height: i32,
     pub hash: BlockHash,
 }
+
+// Most of these fields are not used until step 7.
+#[allow(dead_code)]
+pub struct CoinbaseTemplate {
+    pub script_sig_prefix: Vec<u8>,
+    pub witness: Option<Vec<u8>>,
+    pub block_reward_remaining: u64,
+    pub required_outputs: Vec<TxOut>,
+}
+
+pub type MerklePath = Vec<TxMerkleNode>;
