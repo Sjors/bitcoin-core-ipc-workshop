@@ -249,9 +249,36 @@ The TODOs for this step are in:
 
 - `src/app.rs`
 
-You are looking at the reference solution for step 6. Use
-`git diff step.6 step.6.solution` to see what it changed.
+## Step 7 - Submit the block
 
-## Step 7 ...
+Mining the IPC header proves the proof-of-work loop works, but Bitcoin Core still
+needs the matching coinbase transaction before it can accept the block.
 
-Use `git checkout step.7` to move to [step 7](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.7).
+This step provides the coinbase and merkle-root plumbing (`src/mining_job.rs`):
+it builds a coinbase transaction from the `getCoinbaseTx` result, and uses
+`getCoinbaseMerklePath` to put the right merkle root in the header.
+
+Finish the miner by implementing `BlockTemplate.submitSolution`. It takes the
+`version`, `timestamp` and `nonce` of the solved header, plus the serialized
+coinbase transaction. If `result` is `false`, then `reason` and `debug` explain
+why the node rejected the block.
+
+The TODOs for this step are in:
+
+- `src/ipc.rs`
+- `src/app.rs`
+
+Run the miner:
+
+```sh
+cargo run --release -- --threads 4
+```
+
+Check that the chain grew:
+
+```sh
+bitcoin-core/bin/bitcoin-cli -datadir="$(pwd)/bitcoin" getblockcount
+```
+
+When you're done, or stuck, use `git checkout step.7.solution` to see the
+[Step 7 solution](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.7.solution).

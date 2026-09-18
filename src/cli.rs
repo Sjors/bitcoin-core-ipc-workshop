@@ -20,6 +20,14 @@ pub struct Args {
     /// Directory containing CI block fixtures.
     #[arg(long, default_value = "test/fixtures")]
     fixtures: PathBuf,
+
+    /// Extra bytes appended to the coinbase scriptSig after the required prefix.
+    #[arg(long, default_value = "bitcoin-core-ipc-workshop")]
+    coinbase_message: String,
+
+    /// Connect, fetch a template, build mining work, and exit without hashing.
+    #[arg(long)]
+    check_template: bool,
 }
 
 pub struct Config {
@@ -27,6 +35,8 @@ pub struct Config {
     pub threads: usize,
     pub ci: bool,
     pub fixtures: PathBuf,
+    pub coinbase_message: String,
+    pub check_template: bool,
 }
 
 impl Args {
@@ -44,6 +54,8 @@ impl Args {
             threads,
             ci: self.ci,
             fixtures: self.fixtures,
+            coinbase_message: self.coinbase_message,
+            check_template: self.check_template,
         })
     }
 }

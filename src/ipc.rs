@@ -1,3 +1,6 @@
+// TODO: Remove this line when you're done.
+#![allow(dead_code, unused_variables)]
+
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -14,7 +17,8 @@ use tokio_util::compat::{Compat, TokioAsyncReadCompatExt, TokioAsyncWriteCompatE
 
 use crate::{
     block_header::BLOCK_HEADER_LEN,
-    mining_job::{CoinbaseTemplate, MerklePath, Tip},
+    mining_job::{CoinbaseTemplate, Tip},
+    pow::FoundBlock,
 };
 
 /// Number of Bitcoin Core worker threads that serve our IPC requests.
@@ -148,6 +152,8 @@ impl IpcBlockTemplate {
 
         let witness = coinbase.get_witness()?.to_vec();
         Ok(CoinbaseTemplate {
+            version: coinbase.get_version(),
+            sequence: coinbase.get_sequence(),
             script_sig_prefix: coinbase.get_script_sig_prefix()?.to_vec(),
             witness: (!witness.is_empty()).then_some(witness),
             block_reward_remaining: coinbase
@@ -155,10 +161,11 @@ impl IpcBlockTemplate {
                 .try_into()
                 .context("negative block reward remaining")?,
             required_outputs,
+            lock_time: coinbase.get_lock_time(),
         })
     }
 
-    pub async fn coinbase_merkle_path(&self) -> Result<MerklePath> {
+    pub async fn coinbase_merkle_path(&self) -> Result<Vec<TxMerkleNode>> {
         let response = self
             .template
             .get_coinbase_merkle_path_request()
@@ -187,6 +194,14 @@ impl IpcBlockTemplate {
             .await
             .context("destroy BlockTemplate IPC request failed")?;
         Ok(())
+    }
+
+    pub async fn submit_solution(&self, found: &FoundBlock, coinbase: &[u8]) -> Result<()> {
+        // TODO: Call submitSolution on the block template client with the version,
+        // timestamp and nonce of the found header, and the serialized coinbase
+        // transaction. If the result is false, bail with the reason and debug
+        // strings from the response.
+        todo!("submitSolution")
     }
 }
 
