@@ -103,6 +103,25 @@ The workshop does not work with v31 or older. If you use the Bitcoin Core
 `master` branch, then later on you'll need to use the `master` branch instead of
 `32.x` for `bitcoin-capnp-types`.
 
-## Step 2 ...
+## Step 2 - Your very own signet
 
-Use `git checkout step.2` to move to [step 2](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.2).
+Start a fresh custom signet node. Use `bitcoin/` in this repository
+as the data directory.
+
+```sh
+bitcoin-core/bin/bitcoin node \
+  -datadir="$(pwd)/bitcoin"
+```
+
+The configuration is in `bitcoin/bitcoin.conf`. The `ipcbind=unix` setting makes
+the node listen for IPC connections on the Unix socket
+`bitcoin/signet/node.sock`.
+
+The signet challenge `51` is `OP_1`, so any block only needs to satisfy proof of
+work; see [BIP325](https://github.com/bitcoin/bips/blob/master/bip-0325.mediawiki).
+
+Leave the node running for the rest of the workshop.
+
+## Step 3 ...
+
+Use `git checkout step.3` to move to [step 3](https://github.com/Sjors/bitcoin-core-ipc-workshop/tree/step.3).
