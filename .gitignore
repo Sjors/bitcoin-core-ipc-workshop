@@ -4,3 +4,4 @@ bitcoin/signet/
 bitcoin/settings.json
 *.tar.gz
 SHA256SUMS
+bitcoin-src

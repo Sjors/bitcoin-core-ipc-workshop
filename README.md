@@ -16,24 +16,92 @@ data structures, consensus encoding, and hashing.
 
 This workshop was generated with the help of this [skill](https://github.com/Sjors/skills/tree/master/tagged-workshop) and this [script](https://github.com/Sjors/dev-utils/blob/master/tagged_workshop_retag.py).
 
-## Step 1 - Bitcoin Core
+## How this workshop works
 
-Download Bitcoin Core v31.0 from:
-https://bitcoincore.org/bin/bitcoin-core-31.0/
+The workshop is a series of git tags. You are looking at `step.1`, which is also
+the `master` branch. Every step ends with the `git checkout` command that takes
+you to the next tag. Always start from `master`: the `workshop` branch only exists
+to hold the tags, and its tip is the finished miner.
 
-Extract it in `bitcoin-core/` in this repo, e.g. for macOS:
+The `README.md` grows as you go: each tag adds the instructions for its own step
+at the bottom, so after every checkout scroll down to the last section (or
+follow the link to read it on GitHub).
+
+Steps 1 to 3 are setup. From step 4 onwards every step is an exercise, and comes
+as a pair of tags:
+
+| Tag               | What you get                                                |
+| ----------------- | ----------------------------------------------------------- |
+| `step.N`          | The instructions for step N and starter code with `TODO`s.   |
+| `step.N.solution` | The reference solution for step N. No new instructions.      |
+
+So the loop is:
+
+1. `git checkout step.N` and read the new section at the bottom of the README.
+2. Implement the `TODO`s yourself. The starter code always compiles and runs, so
+   you can use `cargo run` to try things out as you go.
+3. `git checkout step.N.solution` to see the reference solution.
+4. `git checkout step.N+1`, which continues from the reference solution (not from
+   your code), so you can keep going even if you got stuck.
+
+Git refuses to check out a tag while you have uncommitted changes to the same
+files. Pick one:
 
 ```sh
-curl -O https://bitcoincore.org/bin/bitcoin-core-31.0/bitcoin-31.0-arm64-apple-darwin.tar.gz
+# Compare your attempt with the solution, without switching
+git diff step.4.solution -- src
+
+# Keep your attempt on a branch of your own, then move on
+git switch -c my-step-4
+git commit -am "My step 4"
+git checkout step.4.solution
+
+# Or throw your attempt away
+git checkout --force step.4.solution
+```
+
+Checking out a tag puts git in "detached HEAD" state. That's expected.
+
+## Step 1 - Bitcoin Core
+
+You need Bitcoin Core v32. Look in
+https://bitcoincore.org/bin/bitcoin-core-32.0/ for a release, or a release
+candidate in one of the `test.rc*` directories, and download the archive for
+your platform.
+
+Extract it in `bitcoin-core/` in this repo:
+
+```sh
 mkdir -p bitcoin-core
-tar -xzf bitcoin-31.0-arm64-apple-darwin.tar.gz \
+tar -xzf bitcoin-32.*.tar.gz \
   -C bitcoin-core \
   --strip-components=1
 ```
 
-Or build from source. If you use the `master` branch, then in the instructions
-below you'll need to use the `master` branch instead of  `31.x` for
-`bitcoin-capnp-types`.
+If there are no binaries (yet), build the `32.x` branch from source. Install the
+dependencies for your platform, see the
+[build docs](https://github.com/bitcoin/bitcoin/tree/32.x/doc#building). Those
+include Cap'n Proto, which you'll also need later in this workshop. The workshop
+does not need a wallet, GUI or tests, so a minimal build will do:
+
+```sh
+git clone --depth 1 --branch 32.x https://github.com/bitcoin/bitcoin.git bitcoin-src
+cd bitcoin-src
+cmake -B build -DENABLE_WALLET=OFF -DBUILD_TESTS=OFF
+cmake --build build -j 8 --target bitcoin bitcoin-node bitcoin-cli
+cd ..
+ln -s bitcoin-src/build bitcoin-core
+```
+
+Either way, check that this works:
+
+```sh
+bitcoin-core/bin/bitcoin --version
+```
+
+The workshop does not work with v31 or older. If you use the Bitcoin Core
+`master` branch, then later on you'll need to use the `master` branch instead of
+`32.x` for `bitcoin-capnp-types`.
 
 ## Step 2 ...
 

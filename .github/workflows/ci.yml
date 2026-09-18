@@ -16,8 +16,9 @@ jobs:
   workshop-steps:
     runs-on: ubuntu-latest
     env:
-      BITCOIN_VERSION: "31.0"
-      BITCOIN_PLATFORM: x86_64-linux-gnu
+      # There are no Bitcoin Core v32 release binaries yet, so build the branch
+      # from source. Once v32.0 is out, download the release instead.
+      BITCOIN_BRANCH: "32.x"
       RUSTC_WRAPPER: sccache
       SCCACHE_GHA_ENABLED: "true"
     steps:
@@ -33,27 +34,50 @@ jobs:
       - name: Install sccache
         uses: mozilla-actions/sccache-action@v0.0.10
 
-      - name: Install Cap'n Proto
+      - name: Install Cap'n Proto and Bitcoin Core build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install capnproto libcapnp-dev
+          sudo apt-get install build-essential cmake python3 libboost-dev capnproto libcapnp-dev ccache
 
-      - name: Cache Bitcoin Core release
+      - name: Resolve Bitcoin Core commit
+        id: bitcoin-commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit="$(git ls-remote https://github.com/bitcoin/bitcoin.git "refs/heads/${BITCOIN_BRANCH}" | cut -f1)"
+          test -n "${commit}"
+          echo "commit=${commit}" >> "${GITHUB_OUTPUT}"
+
+      - name: Cache Bitcoin Core build
+        id: bitcoin-cache
         uses: actions/cache@v5
         with:
           path: bitcoin-core
-          key: bitcoin-core-${{ env.BITCOIN_VERSION }}-${{ env.BITCOIN_PLATFORM }}
+          key: bitcoin-core-${{ runner.os }}-${{ steps.bitcoin-commit.outputs.commit }}
 
-      - name: Install Bitcoin Core release
+      # Speeds up the build when the branch has moved since the cached build.
+      - name: Cache ccache
+        if: steps.bitcoin-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ steps.bitcoin-commit.outputs.commit }}
+          restore-keys: ccache-${{ runner.os }}-
+
+      - name: Build Bitcoin Core
         shell: bash
         run: |
           set -euo pipefail
 
           if [[ ! -x bitcoin-core/bin/bitcoin ]]; then
-            archive="bitcoin-${BITCOIN_VERSION}-${BITCOIN_PLATFORM}.tar.gz"
-            curl -fsSLO "https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/${archive}"
-            mkdir -p bitcoin-core
-            tar -xzf "${archive}" -C bitcoin-core --strip-components=1
+            git clone --depth 1 --branch "${BITCOIN_BRANCH}" https://github.com/bitcoin/bitcoin.git "${RUNNER_TEMP}/bitcoin-src"
+            cmake -S "${RUNNER_TEMP}/bitcoin-src" -B "${RUNNER_TEMP}/bitcoin-build" \
+              -DENABLE_WALLET=OFF -DBUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            cmake --build "${RUNNER_TEMP}/bitcoin-build" -j "$(nproc)" \
+              --target bitcoin bitcoin-node bitcoin-cli
+            mkdir -p bitcoin-core/bin
+            cp "${RUNNER_TEMP}/bitcoin-build/bin/"{bitcoin,bitcoin-node,bitcoin-cli} bitcoin-core/bin/
           fi
 
           ./bitcoin-core/bin/bitcoin --version
